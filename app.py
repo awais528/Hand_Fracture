@@ -1,8 +1,7 @@
 import streamlit as st
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 import io
-import base64
 
 # Page configuration
 st.set_page_config(
@@ -78,6 +77,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def create_icon_image():
+    """Create a simple icon image using PIL"""
+    img = Image.new('RGB', (100, 100), color='#1f77b4')
+    draw = ImageDraw.Draw(img)
+    # Draw a simple medical cross
+    draw.rectangle([40, 20, 60, 80], fill='white')
+    draw.rectangle([20, 40, 80, 60], fill='white')
+    return img
+
 def simulate_fracture_detection(image):
     """
     Simulate fracture detection since we can't use the actual YOLO model
@@ -132,21 +140,35 @@ def draw_bounding_boxes(image, boxes, confidences):
         # Draw label
         label = f"Fracture: {confidence:.2f}"
         
-        # Try to use a font
+        # Use default font
         try:
-            font = ImageFont.truetype("Arial", 20)
-        except:
+            from PIL import ImageFont
             try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
+                font = ImageFont.truetype("Arial", 20)
             except:
-                font = ImageFont.load_default()
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
+                except:
+                    font = ImageFont.load_default()
+        except:
+            # Fallback if ImageFont fails
+            font = None
+        
+        # Calculate text size
+        if font:
+            text_bbox = draw.textbbox((x1, y1-25), label, font=font)
+        else:
+            # Approximate bbox if no font
+            text_bbox = [x1, y1-25, x1 + len(label)*10, y1]
         
         # Draw text background
-        text_bbox = draw.textbbox((x1, y1-25), label, font=font)
         draw.rectangle(text_bbox, fill=color)
         
         # Draw text
-        draw.text((x1, y1-25), label, fill='white', font=font)
+        if font:
+            draw.text((x1, y1-25), label, fill='white', font=font)
+        else:
+            draw.text((x1, y1-25), label, fill='white')
     
     return image
 
@@ -156,8 +178,8 @@ st.markdown('<div class="sub-header">AI-Powered Fracture Detection in Hand X-Ray
 
 # Sidebar
 with st.sidebar:
-    st.image("🔬", width=100)
-    st.title("Settings")
+    st.markdown("### 🔬 Medical AI")
+    st.markdown("---")
     
     # Confidence threshold slider
     confidence_threshold = st.slider(
@@ -181,7 +203,7 @@ with st.sidebar:
     st.warning("""
     **Note:** This is a demo interface. 
     To use your actual YOLO model, you'll need to:
-    1. Host the model separately (e.g., Hugging Face)
+    1. Host the model separately
     2. Use API calls instead of local imports
     """)
 
@@ -198,8 +220,11 @@ with col1:
     )
     
     if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded X-Ray Image", use_column_width=True)
+        try:
+            image = Image.open(uploaded_file)
+            st.image(image, caption="Uploaded X-Ray Image", use_column_width=True)
+        except Exception as e:
+            st.error(f"Error loading image: {str(e)}")
 
 with col2:
     st.markdown("### 🔍 Detection Results")
@@ -208,6 +233,9 @@ with col2:
         if st.button("🚀 Detect Fractures", use_container_width=True):
             with st.spinner("🔬 Analyzing X-Ray for fractures..."):
                 try:
+                    # Load the image again to ensure it's fresh
+                    image = Image.open(uploaded_file)
+                    
                     # Simulate detection (replace this with your actual model)
                     boxes, confidences = simulate_fracture_detection(image)
                     
@@ -258,6 +286,36 @@ with col2:
                 except Exception as e:
                     st.error(f"Error during processing: {str(e)}")
 
+# Demo section when no file is uploaded
+else:
+    st.markdown("---")
+    st.markdown("### 💡 How it works")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+        **1. Upload Image**
+        - Select a hand X-ray image
+        - Supported formats: JPG, JPEG, PNG
+        """)
+    
+    with col2:
+        st.markdown("""
+        **2. Adjust Settings**
+        - Set confidence threshold
+        - Higher = fewer false positives
+        - Lower = more sensitive detection
+        """)
+    
+    with col3:
+        st.markdown("""
+        **3. Get Results**
+        - Visual bounding boxes
+        - Confidence scores
+        - Detailed analysis
+        """)
+
 # Integration section for actual model
 st.markdown("---")
 st.markdown("### 🔧 Model Integration Guide")
@@ -274,11 +332,13 @@ with st.expander("Click here to integrate your actual YOLO model"):
     ### Option 2: Custom API
     1. Deploy your model on AWS/GCP/Azure
     2. Create a simple FastAPI endpoint
-    3. Replace the `simulate_fracture_detection` function with API calls
+    3. Replace the simulation function with API calls
 
     ### Example API Integration Code:
     ```python
     import requests
+    import base64
+    import io
     
     def detect_fractures_api(image):
         # Convert image to base64
@@ -297,6 +357,15 @@ with st.expander("Click here to integrate your actual YOLO model"):
         else:
             return [], []
     ```
+    
+    **Replace the simulation function call with:**
+    ```python
+    # Instead of:
+    boxes, confidences = simulate_fracture_detection(image)
+    
+    # Use:
+    boxes, confidences = detect_fractures_api(image)
+    ```
     """)
 
 # Model performance section
@@ -306,16 +375,16 @@ st.markdown("### 📈 Expected Performance")
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.metric("mAP@50", "0.82", "0.05")
+    st.metric("mAP@50", "0.82")
 
 with col2:
-    st.metric("Precision", "0.95", "0.03")
+    st.metric("Precision", "0.95")
 
 with col3:
-    st.metric("Recall", "0.73", "0.02")
+    st.metric("Recall", "0.73")
 
 with col4:
-    st.metric("F1-Score", "0.83", "0.04")
+    st.metric("F1-Score", "0.83")
 
 # Footer
 st.markdown("---")
