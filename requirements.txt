@@ -1,5 +1,5 @@
 streamlit==1.39.0
-torch==2.6.0
+torch==2.7.0
 torchvision==0.22.0
 ultralytics==8.3.23
 opencv-python-headless==4.10.0.84
