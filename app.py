@@ -169,11 +169,6 @@ with st.sidebar:
     4. View results and analysis
     """)
 
-    st.warning("""
-    **Note:** This is a demo interface. 
-    Replace the simulation with your YOLO model API for real predictions.
-    """)
-
 
 # --------------------------------------
 # Main Layout
@@ -269,21 +264,6 @@ if uploaded_file is None:
         - Confidence scores
         - Detailed analysis
         """)
-
-
-# --------------------------------------
-# Integration Guide
-# --------------------------------------
-st.markdown("---")
-st.markdown("### 🔧 Model Integration Guide")
-
-with st.expander("Click here to integrate your actual YOLO model"):
-    st.markdown("""
-    **Steps to integrate your trained YOLO model:**
-    1. Host the model (`best.pt`) on Hugging Face or a cloud API
-    2. Send the uploaded image to that API for inference
-    3. Replace `simulate_fracture_detection()` with your API call
-    """)
 
 
 # --------------------------------------
